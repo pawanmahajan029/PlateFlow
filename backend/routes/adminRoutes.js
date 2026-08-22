@@ -8,6 +8,7 @@ const {
   updateAdmin,
   deleteAdmin,
   createOperator,
+  resetAdminPassword,
 } = require("../controllers/adminController");
 
 const protect = require("../middleware/authmiddleware");
@@ -27,5 +28,8 @@ router.delete("/:id", protect, authorize("superAdmin"), deleteAdmin);
 
 // Create Operator
 router.post("/operator",protect,authorize("admin"),createOperator);
+
+// Reset Admin Password
+router.put("/:id/reset-password",protect,authorize("superAdmin"),resetAdminPassword);
 
 module.exports = router;

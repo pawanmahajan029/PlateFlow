@@ -7,6 +7,8 @@ const userRoutes = require("./routes/userRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const operatorRoutes = require("./routes/operatorRoutes");
+
 
 const app = express();
 
@@ -14,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use("/api/operator", operatorRoutes);
 
 
 app.get("/", (req, res) => {

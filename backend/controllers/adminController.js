@@ -211,10 +211,54 @@ const createOperator = async (req, res) => {
   }
 };
 
+// Reset Admin Password
+const resetAdminPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required.",
+      });
+    }
+
+    const admin = await User.findOne({
+      _id: req.params.id,
+      role: "admin",
+    });
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found.",
+      });
+    }
+
+    admin.password = password;
+
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Admin password reset successfully.",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+
 module.exports = {
   createAdmin,
   getAllAdmins,
   updateAdmin,
   deleteAdmin,
   createOperator,
+  resetAdminPassword,
 };
