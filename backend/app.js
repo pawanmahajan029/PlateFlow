@@ -8,6 +8,7 @@ const menuRoutes = require("./routes/menuRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const operatorRoutes = require("./routes/operatorRoutes");
+const chefRoutes = require("./routes/chefroutes");
 
 
 const app = express();
@@ -16,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use("/api/operator", operatorRoutes);
+
 
 
 app.get("/", (req, res) => {
@@ -28,5 +29,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/operator", operatorRoutes);
+app.use("/api/chef", chefRoutes);
 
 module.exports = app;
