@@ -354,6 +354,48 @@ const getAllChefTasks = async (req, res) => {
   }
 };
 
+// Get Chef Workload
+const getChefWorkload = async (req, res) => {
+  try {
+    const chefs = await User.find({
+      role: "chef",
+      status: "active",
+    }).select("fullName email status");
+
+    const workload = [];
+
+    for (const chef of chefs) {
+      const activeTasks = await ChefTask.countDocuments({
+        chef: chef._id,
+        status: {
+          $in: ["pending", "accepted", "preparing"],
+        },
+      });
+
+      workload.push({
+        chef: {
+          id: chef._id,
+          fullName: chef.fullName,
+          email: chef.email,
+        },
+        activeTasks,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      workload,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 module.exports = {
   getOperatorProfile,
   createChef,
@@ -363,4 +405,5 @@ module.exports = {
   getRejectedTasks,
   reassignChefTask,
   getAllChefTasks,
+  getChefWorkload,
 };
