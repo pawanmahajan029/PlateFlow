@@ -396,6 +396,55 @@ const getChefWorkload = async (req, res) => {
   }
 };
 
+// Get Kitchen Summary
+const getKitchenSummary = async (req, res) => {
+  try {
+    const totalChefs = await User.countDocuments({
+      role: "chef",
+    });
+
+    const activeChefs = await User.countDocuments({
+      role: "chef",
+      status: "active",
+    });
+
+    const pendingTasks = await ChefTask.countDocuments({
+      status: "pending",
+    });
+
+    const preparingTasks = await ChefTask.countDocuments({
+      status: "preparing",
+    });
+
+    const readyTasks = await ChefTask.countDocuments({
+      status: "ready",
+    });
+
+    const completedTasks = await ChefTask.countDocuments({
+      status: "completed",
+    });
+
+    res.status(200).json({
+      success: true,
+      summary: {
+        totalChefs,
+        activeChefs,
+        pendingTasks,
+        preparingTasks,
+        readyTasks,
+        completedTasks,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 module.exports = {
   getOperatorProfile,
   createChef,
@@ -406,4 +455,5 @@ module.exports = {
   reassignChefTask,
   getAllChefTasks,
   getChefWorkload,
+  getKitchenSummary,
 };

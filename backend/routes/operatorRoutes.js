@@ -12,6 +12,7 @@ const {
   reassignChefTask,
   getAllChefTasks,
   getChefWorkload,
+  getKitchenSummary,
 } = require("../controllers/operatorController");
 
 const protect = require("../middleware/authmiddleware");
@@ -90,4 +91,11 @@ router.get(
   getChefWorkload
 );
 
+// Get Kitchen Summary
+router.get(
+  "/kitchen-summary",
+  protect,
+  authorize("operator"),
+  getKitchenSummary
+);
 module.exports = router;
