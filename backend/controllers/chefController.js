@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const ChefTask = require("../models/chefTask");
+const Order = require("../models/Order");
 
 // Get Chef Profile
 const getChefProfile = async (req, res) => {
@@ -121,6 +122,35 @@ const updateTaskStatus = async (req, res) => {
     task.status = status;
 
     await task.save();
+
+    // Find the related Order
+    const order = await Order.findById(task.order);
+
+    if (order) {
+      // Accepted → Order preparing
+      if (status === "accepted") {
+        order.orderStatus = "preparing";
+      }
+
+      // Ready → Order ready
+      if (status === "ready") {
+        order.orderStatus = "ready";
+      }
+
+      // Completed → Check all Chef Tasks
+      if (status === "completed") {
+        const remainingTasks = await ChefTask.countDocuments({
+          order: task.order,
+          status: { $ne: "completed" },
+        });
+
+        if (remainingTasks === 0) {
+          order.orderStatus = "completed";
+        }
+      }
+
+      await order.save();
+    }
 
     res.status(200).json({
       success: true,
