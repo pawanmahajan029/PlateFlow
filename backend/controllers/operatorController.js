@@ -331,6 +331,29 @@ const reassignChefTask = async (req, res) => {
   }
 };
 
+// Get All Chef Tasks
+const getAllChefTasks = async (req, res) => {
+  try {
+    const tasks = await ChefTask.find()
+      .populate("order")
+      .populate("chef", "fullName email status")
+      .populate("items.menuItem");
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 module.exports = {
   getOperatorProfile,
   createChef,
@@ -339,4 +362,5 @@ module.exports = {
   createChefTask,
   getRejectedTasks,
   reassignChefTask,
+  getAllChefTasks,
 };

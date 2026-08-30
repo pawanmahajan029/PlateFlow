@@ -10,6 +10,7 @@ const {
   createChefTask,
   getRejectedTasks,
   reassignChefTask,
+  getAllChefTasks,
 } = require("../controllers/operatorController");
 
 const protect = require("../middleware/authmiddleware");
@@ -70,6 +71,14 @@ router.put(
   protect,
   authorize("operator"),
   reassignChefTask
+);
+
+// Get All Chef Tasks
+router.get(
+  "/chef-tasks",
+  protect,
+  authorize("operator"),
+  getAllChefTasks
 );
 
 module.exports = router;
