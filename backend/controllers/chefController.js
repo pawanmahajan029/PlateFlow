@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const ChefTask = require("../models/chefTask");
 
 // Get Chef Profile
 const getChefProfile = async (req, res) => {
@@ -26,6 +27,118 @@ const getChefProfile = async (req, res) => {
   }
 };
 
+// Get My Chef Tasks
+const getMyTasks = async (req, res) => {
+  try {
+    const tasks = await ChefTask.find({
+      chef: req.user.id,
+    })
+      .populate("order")
+      .populate("items.menuItem");
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Update Chef Task Status
+const updateTaskStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const allowedStatuses = [
+      "accepted",
+      "rejected",
+      "preparing",
+      "ready",
+      "completed",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid task status.",
+      });
+    }
+
+    const task = await ChefTask.findOne({
+      _id: req.params.id,
+      chef: req.user.id,
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found.",
+      });
+    }
+
+    // Pending → Accepted / Rejected
+    if (
+      task.status === "pending" &&
+      !["accepted", "rejected"].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Pending task can only be accepted or rejected.",
+      });
+    }
+
+    // Accepted → Preparing
+    if (task.status === "accepted" && status !== "preparing") {
+      return res.status(400).json({
+        success: false,
+        message: "Accepted task can only move to preparing.",
+      });
+    }
+
+    // Preparing → Ready
+    if (task.status === "preparing" && status !== "ready") {
+      return res.status(400).json({
+        success: false,
+        message: "Preparing task can only move to ready.",
+      });
+    }
+
+    // Ready → Completed
+    if (task.status === "ready" && status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Ready task can only move to completed.",
+      });
+    }
+
+    task.status = status;
+
+    await task.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Task status updated successfully.",
+      task,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 module.exports = {
   getChefProfile,
+  getMyTasks,
+  updateTaskStatus,
 };

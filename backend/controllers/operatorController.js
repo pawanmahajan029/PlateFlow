@@ -1,4 +1,3 @@
-
 const User = require("../models/user");
 const Order = require("../models/Order");
 const ChefTask = require("../models/chefTask");
@@ -157,15 +156,46 @@ const getAllChefs = async (req, res) => {
   }
 };
 
+// Find Chef With Lowest Workload
+const findAvailableChef = async () => {
+  const chefs = await User.find({
+    role: "chef",
+    status: "active",
+  });
+
+  if (chefs.length === 0) {
+    return null;
+  }
+
+  let selectedChef = null;
+  let lowestWorkload = Infinity;
+
+  for (const chef of chefs) {
+    const workload = await ChefTask.countDocuments({
+      chef: chef._id,
+      status: {
+        $in: ["pending", "accepted", "preparing"],
+      },
+    });
+
+    if (workload < lowestWorkload) {
+      lowestWorkload = workload;
+      selectedChef = chef;
+    }
+  }
+
+  return selectedChef;
+};
+
 // Create Chef Task
 const createChefTask = async (req, res) => {
   try {
-    const { orderId, chefId, items } = req.body;
+    const { orderId, items } = req.body;
 
-    if (!orderId || !chefId || !items || items.length === 0) {
+    if (!orderId || !items || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Order, Chef and items are required.",
+        message: "Order and items are required.",
       });
     }
 
@@ -175,6 +205,95 @@ const createChefTask = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Order not found.",
+      });
+    }
+
+    // Find Chef with the lowest workload
+    const chef = await findAvailableChef();
+
+    if (!chef) {
+      return res.status(404).json({
+        success: false,
+        message: "No active Chef available.",
+      });
+    }
+
+    const chefTask = await ChefTask.create({
+      order: orderId,
+      chef: chef._id,
+      items,
+      assignedBy: req.user.id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Chef task created successfully.",
+      assignedChef: {
+        id: chef._id,
+        fullName: chef.fullName,
+      },
+      chefTask,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Get Rejected Chef Tasks
+const getRejectedTasks = async (req, res) => {
+  try {
+    const tasks = await ChefTask.find({
+      status: "rejected",
+    })
+      .populate("order")
+      .populate("chef")
+      .populate("items.menuItem");
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Reassign Chef Task
+const reassignChefTask = async (req, res) => {
+  try {
+    const { chefId } = req.body;
+
+    if (!chefId) {
+      return res.status(400).json({
+        success: false,
+        message: "Chef ID is required.",
+      });
+    }
+
+    const task = await ChefTask.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Chef task not found.",
+      });
+    }
+
+    if (task.status !== "rejected") {
+      return res.status(400).json({
+        success: false,
+        message: "Only rejected tasks can be reassigned.",
       });
     }
 
@@ -191,17 +310,16 @@ const createChefTask = async (req, res) => {
       });
     }
 
-    const chefTask = await ChefTask.create({
-      order: orderId,
-      chef: chefId,
-      items,
-      assignedBy: req.user.id,
-    });
+    task.chef = chefId;
+    task.status = "pending";
+    task.assignedBy = req.user.id;
 
-    res.status(201).json({
+    await task.save();
+
+    res.status(200).json({
       success: true,
-      message: "Chef task created successfully.",
-      chefTask,
+      message: "Chef task reassigned successfully.",
+      task,
     });
   } catch (error) {
     console.error(error);
@@ -219,4 +337,6 @@ module.exports = {
   updateChefStatus,
   getAllChefs,
   createChefTask,
+  getRejectedTasks,
+  reassignChefTask,
 };
