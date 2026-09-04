@@ -129,6 +129,74 @@ const confirmCashPayment = async (req, res) => {
   }
 };
 
+// Cancel Order By Customer when payment  in pending 
+
+const cancelOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Make sure the customer owns this order
+    if (order.customer.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only cancel your own order",
+      });
+    }
+
+    // Customer can cancel only before payment
+    if (order.paymentStatus !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Order cannot be cancelled by customer after payment",
+      });
+    }
+
+    // Check if already cancelled
+    if (order.cancellation.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: "Order is already cancelled",
+      });
+    }
+
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Cancellation reason is required",
+      });
+    }
+
+    order.cancellation.isCancelled = true;
+    order.cancellation.cancelledBy = req.user.id;
+    order.cancellation.cancelledAt = new Date();
+    order.cancellation.reason = reason;
+
+    order.orderStatus = "cancelled";
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
-  createOrder,confirmCashPayment,
+  createOrder,confirmCashPayment,cancelOrder,
 };

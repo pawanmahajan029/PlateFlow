@@ -27,6 +27,28 @@ const orderSchema = new mongoose.Schema(
           required: true,
           min: 0,
         },
+
+        // Item-level cancellation
+        isCancelled: {
+          type: Boolean,
+          default: false,
+        },
+
+        cancellationReason: {
+          type: String,
+          default: "",
+        },
+
+        cancelledBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+
+        cancelledAt: {
+          type: Date,
+          default: null,
+        },
       },
     ],
 
@@ -50,8 +72,53 @@ const orderSchema = new mongoose.Schema(
 
     orderStatus: {
       type: String,
-      enum: ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"],
+      enum: [
+        "pending",
+        "confirmed",
+        "preparing",
+        "ready",
+        "completed",
+        "cancelled",
+      ],
       default: "pending",
+    },
+
+    // Order-level cancellation
+    cancellation: {
+      isCancelled: {
+        type: Boolean,
+        default: false,
+      },
+
+      cancelledBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+
+      cancelledAt: {
+        type: Date,
+        default: null,
+      },
+
+      reason: {
+        type: String,
+        default: "",
+      },
+    },
+
+    // Refund information
+    refund: {
+      refundAmount: {
+        type: Number,
+        default: 0,
+      },
+
+      refundStatus: {
+        type: String,
+        enum: ["not_required", "pending", "processed"],
+        default: "not_required",
+      },
     },
   },
   {

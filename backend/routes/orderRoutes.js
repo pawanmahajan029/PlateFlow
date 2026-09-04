@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   createOrder,
   confirmCashPayment,
+  cancelOrder,
 } = require("../controllers/orderController");
 
 const protect = require("../middleware/authmiddleware");
@@ -20,5 +21,8 @@ router.put(
   authorize("operator"),
   confirmCashPayment
 );
+
+//cancelOrder by customer 
+router.post("/:id/cancel", protect, authorize("customer"), cancelOrder);
 
 module.exports = router;
