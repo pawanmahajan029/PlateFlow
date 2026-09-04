@@ -197,6 +197,68 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+
+// Operator can cancel an order
+const operatorCancelOrder = async (req, res) => {
+  try {
+    // Check if order exists
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Check if order is already cancelled
+    if (order.cancellation.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: "Order is already cancelled",
+      });
+    }
+
+    const { reason, refundAmount= 0 } = req.body;
+
+    // Cancellation reason is required
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Cancellation reason is required",
+      });
+    }
+
+    // Store cancellation details
+    order.cancellation.isCancelled = true;
+    order.cancellation.cancelledBy = req.user.id;
+    order.cancellation.cancelledAt = new Date();
+    order.cancellation.reason = reason;
+
+    // Mark the order as cancelled
+    order.orderStatus = "cancelled";
+
+    // Record refund details if a refund is applicable
+if (refundAmount > 0 && order.paymentStatus === "paid") {
+  order.refund.refundAmount = refundAmount;
+  order.refund.refundStatus = "pending";
+}
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully by operator",
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
-  createOrder,confirmCashPayment,cancelOrder,
+  createOrder,confirmCashPayment,cancelOrder,operatorCancelOrder,
 };
