@@ -1,5 +1,6 @@
 const Menu = require("../models/Menu");
 
+//createMenu
 const createMenu = async (req, res) => {
     try {
 
@@ -42,6 +43,7 @@ const createMenu = async (req, res) => {
     }
 };
 
+// to get full menu
 const getAllMenus = async (req, res) => {
     try {
 
@@ -64,7 +66,49 @@ const getAllMenus = async (req, res) => {
     }
 };
 
+// Operator can update menu item availability
+const updateMenuAvailability = async (req, res) => {
+  try {
+    const { isAvailable } = req.body;
+
+    // Check if availability value is provided
+    if (typeof isAvailable !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "isAvailable must be true or false",
+      });
+    }
+
+    // Find menu item
+    const menu = await Menu.findById(req.params.id);
+
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu item not found",
+      });
+    }
+
+    // Update availability
+    menu.isAvailable = isAvailable;
+
+    await menu.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Menu availability updated successfully",
+      menu,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
     createMenu,
     getAllMenus,
+    updateMenuAvailability,
 };

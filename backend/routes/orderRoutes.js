@@ -7,6 +7,7 @@ const {
   confirmCashPayment,
   cancelOrder,
   operatorCancelOrder,
+  operatorCancelOrderItem,
 } = require("../controllers/orderController");
 
 const protect = require("../middleware/authmiddleware");
@@ -23,5 +24,8 @@ router.post("/:id/cancel", protect, authorize("customer"), cancelOrder);
 
 // Operator can cancel an order
 router.post("/:id/operator-cancel",protect,authorize("operator"),operatorCancelOrder);
+
+// Operator can cancel a specific item from an order
+router.post("/:id/item/:itemId/cancel",protect,authorize("operator"),operatorCancelOrderItem);
 
 module.exports = router;

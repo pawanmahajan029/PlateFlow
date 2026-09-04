@@ -129,8 +129,7 @@ const confirmCashPayment = async (req, res) => {
   }
 };
 
-// Cancel Order By Customer when payment  in pending 
-
+// Cancel Order By Customer when payment is pending
 const cancelOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -197,7 +196,6 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-
 // Operator can cancel an order
 const operatorCancelOrder = async (req, res) => {
   try {
@@ -219,7 +217,7 @@ const operatorCancelOrder = async (req, res) => {
       });
     }
 
-    const { reason, refundAmount= 0 } = req.body;
+    const { reason, refundAmount = 0 } = req.body;
 
     // Cancellation reason is required
     if (!reason) {
@@ -239,10 +237,10 @@ const operatorCancelOrder = async (req, res) => {
     order.orderStatus = "cancelled";
 
     // Record refund details if a refund is applicable
-if (refundAmount > 0 && order.paymentStatus === "paid") {
-  order.refund.refundAmount = refundAmount;
-  order.refund.refundStatus = "pending";
-}
+    if (refundAmount > 0 && order.paymentStatus === "paid") {
+      order.refund.refundAmount = refundAmount;
+      order.refund.refundStatus = "pending";
+    }
 
     await order.save();
 
@@ -259,6 +257,83 @@ if (refundAmount > 0 && order.paymentStatus === "paid") {
   }
 };
 
+// Operator can cancel a specific item from an order
+const operatorCancelOrderItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { reason } = req.body;
+
+    // Check if order exists
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Cancellation reason is required
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Cancellation reason is required",
+      });
+    }
+
+    // Find the specific item inside the order
+    const orderItem = order.items.id(itemId);
+
+    if (!orderItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found",
+      });
+    }
+
+    // Check if the item is already cancelled
+    if (orderItem.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: "Order item is already cancelled",
+      });
+    }
+
+    // Calculate refund for the cancelled item
+    const refundAmount = orderItem.price * orderItem.quantity;
+
+    // Store item cancellation details
+    orderItem.isCancelled = true;
+    orderItem.cancellationReason = reason;
+    orderItem.cancelledBy = req.user.id;
+    orderItem.cancelledAt = new Date();
+
+    // Record refund only when payment has already been made
+    if (order.paymentStatus === "paid") {
+      order.refund.refundAmount += refundAmount;
+      order.refund.refundStatus = "pending";
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order item cancelled successfully",
+      refundAmount,
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
-  createOrder,confirmCashPayment,cancelOrder,operatorCancelOrder,
+  createOrder,
+  confirmCashPayment,
+  cancelOrder,
+  operatorCancelOrder,
+  operatorCancelOrderItem,
 };
