@@ -227,6 +227,21 @@ const operatorCancelOrder = async (req, res) => {
       });
     }
 
+    // Validate refund amount
+    if (refundAmount < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Refund amount cannot be negative",
+      });
+    }
+
+    if (refundAmount > order.totalAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Refund amount cannot exceed order total",
+      });
+    }
+
     // Store cancellation details
     order.cancellation.isCancelled = true;
     order.cancellation.cancelledBy = req.user.id;
