@@ -330,10 +330,50 @@ const operatorCancelOrderItem = async (req, res) => {
   }
 };
 
+// Operator can mark a refund as processed
+const processRefund = async (req, res) => {
+  try {
+    // Check if order exists
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Check if a refund is pending
+    if (order.refund.refundStatus !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "No pending refund found for this order",
+      });
+    }
+
+    // Mark refund as processed
+    order.refund.refundStatus = "processed";
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Refund marked as processed successfully",
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   confirmCashPayment,
   cancelOrder,
   operatorCancelOrder,
   operatorCancelOrderItem,
+  processRefund,
 };

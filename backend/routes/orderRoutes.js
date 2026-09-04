@@ -8,6 +8,7 @@ const {
   cancelOrder,
   operatorCancelOrder,
   operatorCancelOrderItem,
+  processRefund,
 } = require("../controllers/orderController");
 
 const protect = require("../middleware/authmiddleware");
@@ -27,5 +28,8 @@ router.post("/:id/operator-cancel",protect,authorize("operator"),operatorCancelO
 
 // Operator can cancel a specific item from an order
 router.post("/:id/item/:itemId/cancel",protect,authorize("operator"),operatorCancelOrderItem);
+
+// Operator can process a pending refund
+router.put("/:id/refund",protect,authorize("operator"),processRefund);
 
 module.exports = router;
