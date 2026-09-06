@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const Menu = require("../models/Menu");
+const { assignOrderItemsToChefs } = require("../services/chefAssigmentService");
 
 // Create Order
 const createOrder = async (req, res) => {
@@ -269,10 +270,32 @@ const confirmCashPayment = async (req, res) => {
 
     await order.save();
 
+    // Automatically assign order items to Chefs
+    let chefTasks = [];
+
+    try {
+      chefTasks = await assignOrderItemsToChefs(
+        order,
+        req.user.id
+      );
+    } catch (error) {
+      // Payment is confirmed, but Chef assignment needs operator attention
+      return res.status(200).json({
+        success: true,
+        message:
+          "Cash payment confirmed, but Chef assignment could not be completed.",
+        order,
+        chefTasks: [],
+        warning: error.message,
+      });
+    }
+
     res.status(200).json({
       success: true,
-      message: "Cash payment confirmed successfully",
+      message:
+        "Cash payment confirmed and order assigned to Chefs successfully",
       order,
+      chefTasks,
     });
   } catch (error) {
     console.error(error);

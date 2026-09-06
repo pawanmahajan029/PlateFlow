@@ -43,6 +43,12 @@ const chefTaskSchema = new mongoose.Schema(
       default: "pending",
     },
 
+    // Store the reason when Chef rejects a task
+    rejectionReason: {
+      type: String,
+      default: "",
+    },
+
     assignedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

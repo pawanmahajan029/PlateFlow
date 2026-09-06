@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const Order = require("../models/Order");
 const ChefTask = require("../models/chefTask");
+const { findAvailableChef } = require("../services/chefAssigmentService");
 
 // Get Operator Profile
 const getOperatorProfile = async (req, res) => {
@@ -156,36 +157,7 @@ const getAllChefs = async (req, res) => {
   }
 };
 
-// Find Chef With Lowest Workload
-const findAvailableChef = async () => {
-  const chefs = await User.find({
-    role: "chef",
-    status: "active",
-  });
 
-  if (chefs.length === 0) {
-    return null;
-  }
-
-  let selectedChef = null;
-  let lowestWorkload = Infinity;
-
-  for (const chef of chefs) {
-    const workload = await ChefTask.countDocuments({
-      chef: chef._id,
-      status: {
-        $in: ["pending", "accepted", "preparing"],
-      },
-    });
-
-    if (workload < lowestWorkload) {
-      lowestWorkload = workload;
-      selectedChef = chef;
-    }
-  }
-
-  return selectedChef;
-};
 
 // Create Chef Task
 const createChefTask = async (req, res) => {
