@@ -80,6 +80,161 @@ const createOrder = async (req, res) => {
   }
 };
 
+// Get a single order for the customer
+const getOrderById = async (req, res) => {
+  try {
+    // Find the order by ID
+    const order = await Order.findById(req.params.id).populate(
+      "items.menuItem"
+    );
+
+    // Check if order exists
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Make sure the customer owns this order
+    if (order.customer.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only view your own order",
+      });
+    }
+
+    // Send order details to customer
+    res.status(200).json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get all orders for the logged-in customer
+const getMyOrders = async (req, res) => {
+  try {
+    // Find all orders belonging to the logged-in customer
+    const orders = await Order.find({
+      customer: req.user.id,
+    })
+      .populate("items.menuItem")
+      .sort({ createdAt: -1 });
+
+    // Send customer's orders
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get all orders for the operator
+const getAllOrdersForOperator = async (req, res) => {
+  try {
+    // Get order status and payment status from query parameters
+    const { status, paymentStatus } = req.query;
+
+    // Validate order status if provided
+    if (
+      status &&
+      ![
+        "pending",
+        "confirmed",
+        "preparing",
+        "ready",
+        "completed",
+        "cancelled",
+      ].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order status",
+      });
+    }
+
+    // Validate payment status if provided
+    if (paymentStatus && !["pending", "paid"].includes(paymentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment status",
+      });
+    }
+
+    // Create filter
+    const filter = {};
+
+    // Apply order status filter if provided
+    if (status) {
+      filter.orderStatus = status;
+    }
+
+    // Apply payment status filter if provided
+    if (paymentStatus) {
+      filter.paymentStatus = paymentStatus;
+    }
+
+    // Find orders using the filters
+    const orders = await Order.find(filter)
+      .populate("customer", "fullName email phone")
+      .populate("items.menuItem")
+      .sort({ createdAt: -1 });
+
+    // Send orders to operator
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get a single order for the operator
+const getOperatorOrderById = async (req, res) => {
+  try {
+    // Find the order by ID
+    const order = await Order.findById(req.params.id)
+      .populate("customer", "fullName email phone")
+      .populate("items.menuItem");
+
+    // Check if order exists
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Send order details to operator
+    res.status(200).json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Confirm Cash Payment
 const confirmCashPayment = async (req, res) => {
   try {
@@ -384,8 +539,14 @@ const processRefund = async (req, res) => {
   }
 };
 
+
+
 module.exports = {
   createOrder,
+  getOrderById,
+  getMyOrders,
+  getAllOrdersForOperator,
+  getOperatorOrderById,
   confirmCashPayment,
   cancelOrder,
   operatorCancelOrder,

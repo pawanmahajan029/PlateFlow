@@ -4,6 +4,10 @@ const router = express.Router();
 
 const {
   createOrder,
+  getOrderById,
+  getMyOrders,
+  getAllOrdersForOperator,
+  getOperatorOrderById,
   confirmCashPayment,
   cancelOrder,
   operatorCancelOrder,
@@ -16,6 +20,18 @@ const authorize = require("../middleware/rolemiddleware");
 
 // Create Order
 router.post("/", protect, createOrder);
+
+// Customer can view all their orders
+router.get("/", protect, authorize("customer"), getMyOrders);
+
+// Customer can track/view a single order
+router.get("/:id", protect, authorize("customer"), getOrderById);
+
+// Operator can view all customer orders
+router.get("/operator",protect,authorize("operator"),getAllOrdersForOperator);
+
+// Operator can view a single order
+router.get("/operator/:id",protect,authorize("operator"),getOperatorOrderById);
 
 // Confirm Cash Payment - Operator only
 router.put("/:id/payment",protect,authorize("operator"),confirmCashPayment);
