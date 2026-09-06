@@ -1,7 +1,7 @@
 const User = require("../models/user");
 const Order = require("../models/Order");
 const ChefTask = require("../models/chefTask");
-const { findAvailableChef } = require("../services/chefAssigmentService");
+const { findAvailableChef } = require("../services/chefAssignmentService");
 
 // Get Operator Profile
 const getOperatorProfile = async (req, res) => {

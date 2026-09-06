@@ -37,6 +37,15 @@ const assignOrderItemsToChefs = async (order, assignedBy) => {
   const chefTasks = [];
   const assignments = {};
 
+  // Check if Chef Tasks are already created for this order
+  const existingTasks = await ChefTask.findOne({
+    order: order._id,
+  });
+
+  if (existingTasks) {
+    throw new Error("Chef Tasks are already created for this order.");
+  }
+
   // Get all active Chefs
   const chefs = await User.find({
     role: "chef",

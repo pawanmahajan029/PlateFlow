@@ -1,6 +1,6 @@
 const Order = require("../models/Order");
 const Menu = require("../models/Menu");
-const { assignOrderItemsToChefs } = require("../services/chefAssigmentService");
+const { assignOrderItemsToChefs } = require("../services/chefAssignmentService");
 
 // Create Order
 const createOrder = async (req, res) => {
