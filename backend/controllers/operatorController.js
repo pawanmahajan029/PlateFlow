@@ -208,6 +208,14 @@ const createChefTask = async (req, res) => {
       });
     }
 
+    // Chef task can only be created for a confirmed order
+    if (order.orderStatus !== "confirmed") {
+      return res.status(400).json({
+        success: false,
+        message: "Chef task can only be created for a confirmed order.",
+      });
+    }
+
     // Find Chef with the lowest workload
     const chef = await findAvailableChef();
 
