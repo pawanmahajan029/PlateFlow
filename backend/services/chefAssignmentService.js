@@ -143,7 +143,79 @@ const assignOrderItemsToChefs = async (order, assignedBy) => {
   return chefTasks;
 };
 
+// Redistribute pending tasks when a Chef becomes inactive
+const redistributeChefTasks = async (chefId, assignedBy) => {
+  // Find pending tasks assigned to the inactive Chef
+  const pendingTasks = await ChefTask.find({
+    chef: chefId,
+    status: "pending",
+  });
+
+  // Stop if there are no pending tasks
+  if (pendingTasks.length === 0) {
+    return [];
+  }
+
+  // Get active Chefs
+  const activeChefs = await User.find({
+    role: "chef",
+    status: "active",
+  });
+
+  // Stop if no active Chef is available
+  if (activeChefs.length === 0) {
+    return [];
+  }
+
+  // Store current workload of each active Chef
+  const workloads = {};
+
+  for (const chef of activeChefs) {
+    workloads[chef._id.toString()] = await ChefTask.countDocuments({
+      chef: chef._id,
+      status: {
+        $in: ["pending", "accepted", "preparing"],
+      },
+    });
+  }
+
+  // Redistribute each pending task
+  for (const task of pendingTasks) {
+    let selectedChef = null;
+    let lowestWorkload = Infinity;
+
+    // Find Chef with the lowest workload
+    for (const chef of activeChefs) {
+      const currentWorkload = workloads[chef._id.toString()];
+
+      if (currentWorkload < lowestWorkload) {
+        lowestWorkload = currentWorkload;
+        selectedChef = chef;
+      }
+    }
+
+    if (!selectedChef) {
+      continue;
+    }
+
+    // Assign task to the selected Chef
+    task.chef = selectedChef._id;
+    task.assignedBy = assignedBy;
+
+    await task.save();
+
+    // Increase workload for the next task
+    workloads[selectedChef._id.toString()] += 1;
+  }
+
+  return {
+  redistributedCount: pendingTasks.length,
+  tasks: pendingTasks,
+  };
+};
+
 module.exports = {
   findAvailableChef,
   assignOrderItemsToChefs,
+  redistributeChefTasks,
 };

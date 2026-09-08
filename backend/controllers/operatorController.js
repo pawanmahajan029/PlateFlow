@@ -1,7 +1,11 @@
 const User = require("../models/user");
 const Order = require("../models/Order");
 const ChefTask = require("../models/chefTask");
-const { findAvailableChef } = require("../services/chefAssignmentService");
+const {
+  findAvailableChef,
+  assignOrderItemsToChefs,
+  redistributeChefTasks,
+} = require("../services/chefAssignmentService");
 
 // Get Operator Profile
 const getOperatorProfile = async (req, res) => {
@@ -115,6 +119,11 @@ const updateChefStatus = async (req, res) => {
     chef.status = status;
 
     await chef.save();
+
+    // Redistribute pending tasks when Chef becomes inactive
+    if (status === "inactive") {
+      await redistributeChefTasks(chef._id, req.user.id);
+    }
 
     res.status(200).json({
       success: true,
