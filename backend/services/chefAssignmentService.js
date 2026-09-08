@@ -162,9 +162,11 @@ const redistributeChefTasks = async (chefId, assignedBy) => {
     status: "active",
   });
 
-  // Stop if no active Chef is available
+  // Stop if there are no active Chefs
   if (activeChefs.length === 0) {
-    return [];
+    throw new Error(
+      "No active Chef available to redistribute pending tasks."
+    );
   }
 
   // Store current workload of each active Chef
@@ -209,8 +211,8 @@ const redistributeChefTasks = async (chefId, assignedBy) => {
   }
 
   return {
-  redistributedCount: pendingTasks.length,
-  tasks: pendingTasks,
+    redistributedCount: pendingTasks.length,
+    tasks: pendingTasks,
   };
 };
 

@@ -121,8 +121,13 @@ const updateChefStatus = async (req, res) => {
     await chef.save();
 
     // Redistribute pending tasks when Chef becomes inactive
+    let redistribution = null;
+
     if (status === "inactive") {
-      await redistributeChefTasks(chef._id, req.user.id);
+      redistribution = await redistributeChefTasks(
+        chef._id,
+        req.user.id
+      );
     }
 
     res.status(200).json({
@@ -135,6 +140,7 @@ const updateChefStatus = async (req, res) => {
         role: chef.role,
         status: chef.status,
       },
+      redistribution,
     });
   } catch (error) {
     console.error(error);
