@@ -298,20 +298,48 @@ const confirmIngredientUnavailable = async (req, res) => {
       });
     }
 
-  // Find the rejected Chef Task for this order item
+    // Check if the item is already cancelled
+    if (orderItem.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: "Order item is already cancelled.",
+      });
+    }
+
+    // Find the rejected Chef Task for this order item
     const chefTask = await ChefTask.findOne({
       order: order._id,
       status: "rejected",
       "items.menuItem": orderItem.menuItem,
     });
 
-    if (chefTask) {
-      // Mark the rejected Chef Task as cancelled
-      chefTask.status = "cancelled";
-      await chefTask.save();
+    // Stop if no rejected Chef Task is found
+    if (!chefTask) {
+      return res.status(400).json({
+        success: false,
+        message: "No rejected Chef Task found for this order item.",
+      });
     }
 
-    // Cancel the order item
+    // Mark the rejected Chef Task as cancelled
+    chefTask.status = "cancelled";
+    await chefTask.save();
+
+    // Check if all Chef Tasks are completed or cancelled
+      const remainingTasks = await ChefTask.countDocuments({
+        order: order._id,
+        status: { $nin: ["completed", "cancelled"] },
+      });
+
+      // Mark the order as completed when no active tasks remain
+      if (remainingTasks === 0) {
+        order.orderStatus = "completed";
+      }
+
+    // Cancel all remaining units of the order item
+    orderItem.cancelledQuantity =
+      orderItem.quantity - orderItem.cancelledQuantity;
+
     orderItem.isCancelled = true;
     orderItem.cancellationReason = reason;
     orderItem.cancelledBy = req.user.id;
@@ -326,8 +354,21 @@ const confirmIngredientUnavailable = async (req, res) => {
       await menuItem.save();
     }
 
-    // Calculate refund for the cancelled item
-    const refundAmount = orderItem.price * orderItem.quantity;
+      // Calculate refund only for the newly cancelled quantity
+      const refundAmount =
+        orderItem.price * orderItem.cancelledQuantity;
+
+      // Prevent duplicate refund processing
+      if (
+        order.paymentStatus === "paid" &&
+        order.refund.refundAmount >= refundAmount &&
+        orderItem.isCancelled
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Refund for this item has already been recorded.",
+        });
+      }
 
     // Record refund if payment was already made
     if (order.paymentStatus === "paid") {

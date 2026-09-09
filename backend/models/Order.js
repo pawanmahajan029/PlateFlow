@@ -22,6 +22,13 @@ const orderSchema = new mongoose.Schema(
           min: 1,
         },
 
+        // Track how many units of this item were cancelled
+        cancelledQuantity: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+
         price: {
           type: Number,
           required: true,
