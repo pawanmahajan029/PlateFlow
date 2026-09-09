@@ -1,6 +1,8 @@
 const User = require("../models/user");
 const Order = require("../models/Order");
+const Menu = require("../models/Menu");
 const ChefTask = require("../models/chefTask");
+
 const {
   findAvailableChef,
   assignOrderItemsToChefs,
@@ -173,7 +175,6 @@ const getAllChefs = async (req, res) => {
 };
 
 
-
 // Create Chef Task
 const createChefTask = async (req, res) => {
   try {
@@ -253,6 +254,89 @@ const getRejectedTasks = async (req, res) => {
       success: true,
       count: tasks.length,
       tasks,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Confirm ingredient unavailable and cancel the order item
+const confirmIngredientUnavailable = async (req, res) => {
+  try {
+    const { itemId, reason } = req.body;
+
+    // Check required fields
+    if (!itemId || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Item ID and reason are required.",
+      });
+    }
+
+    // Find the order
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found.",
+      });
+    }
+
+    // Find the specific item inside the order
+    const orderItem = order.items.id(itemId);
+
+    if (!orderItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found.",
+      });
+    }
+
+    // Check if the item is already cancelled
+    if (orderItem.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: "Order item is already cancelled.",
+      });
+    }
+
+    // Cancel the order item
+    orderItem.isCancelled = true;
+    orderItem.cancellationReason = reason;
+    orderItem.cancelledBy = req.user.id;
+    orderItem.cancelledAt = new Date();
+
+    // Find the menu item
+    const menuItem = await Menu.findById(orderItem.menuItem);
+
+    if (menuItem) {
+      // Mark the menu item as unavailable
+      menuItem.isAvailable = false;
+      await menuItem.save();
+    }
+
+    // Calculate refund for the cancelled item
+    const refundAmount = orderItem.price * orderItem.quantity;
+
+    // Record refund if payment was already made
+    if (order.paymentStatus === "paid") {
+      order.refund.refundAmount += refundAmount;
+      order.refund.refundStatus = "pending";
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Ingredient unavailable confirmed and order item cancelled.",
+      refundAmount,
+      order,
     });
   } catch (error) {
     console.error(error);
@@ -447,6 +531,7 @@ module.exports = {
   getAllChefs,
   createChefTask,
   getRejectedTasks,
+  confirmIngredientUnavailable,
   reassignChefTask,
   getAllChefTasks,
   getChefWorkload,

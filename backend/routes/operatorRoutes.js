@@ -9,6 +9,7 @@ const {
   getAllChefs,
   createChefTask,
   getRejectedTasks,
+  confirmIngredientUnavailable,
   reassignChefTask,
   getAllChefTasks,
   getChefWorkload,
@@ -65,6 +66,14 @@ router.get(
   protect,
   authorize("operator"),
   getRejectedTasks
+);
+
+// Confirm ingredient unavailable and cancel the order item
+router.post(
+  "/orders/:id/ingredient-unavailable",
+  protect,
+  authorize("operator"),
+  confirmIngredientUnavailable
 );
 
 // Reassign Chef Task

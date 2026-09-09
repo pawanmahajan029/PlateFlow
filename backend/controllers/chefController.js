@@ -55,7 +55,7 @@ const getMyTasks = async (req, res) => {
 // Update Chef Task Status
 const updateTaskStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, rejectionReason } = req.body;
 
     const allowedStatuses = [
       "accepted",
@@ -69,6 +69,14 @@ const updateTaskStatus = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid task status.",
+      });
+    }
+
+    // Rejection reason is required when Chef rejects a task
+    if (status === "rejected" && !rejectionReason) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required.",
       });
     }
 
@@ -120,6 +128,11 @@ const updateTaskStatus = async (req, res) => {
     }
 
     task.status = status;
+
+    // Store rejection reason when Chef rejects the task
+    if (status === "rejected") {
+      task.rejectionReason = rejectionReason;
+    }
 
     await task.save();
 

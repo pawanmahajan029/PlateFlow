@@ -19,19 +19,19 @@ const protect = require("../middleware/authmiddleware");
 const authorize = require("../middleware/rolemiddleware");
 
 // Create Order
-router.post("/", protect, createOrder);
+router.post("/", protect, authorize("customer"), createOrder);
 
 // Customer can view all their orders
 router.get("/", protect, authorize("customer"), getMyOrders);
 
-// Customer can track/view a single order
-router.get("/:id", protect, authorize("customer"), getOrderById);
-
 // Operator can view all customer orders
-router.get("/operator",protect,authorize("operator"),getAllOrdersForOperator);
+router.get("/operator", protect, authorize("operator"), getAllOrdersForOperator);
 
 // Operator can view a single order
-router.get("/operator/:id",protect,authorize("operator"),getOperatorOrderById);
+router.get("/operator/:id", protect, authorize("operator"), getOperatorOrderById);
+
+// Customer can track/view a single order
+router.get("/:id", protect, authorize("customer"), getOrderById);
 
 // Confirm Cash Payment - Operator only
 router.put("/:id/payment",protect,authorize("operator"),confirmCashPayment);
