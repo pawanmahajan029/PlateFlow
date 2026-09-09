@@ -325,17 +325,6 @@ const confirmIngredientUnavailable = async (req, res) => {
     chefTask.status = "cancelled";
     await chefTask.save();
 
-    // Check if all Chef Tasks are completed or cancelled
-      const remainingTasks = await ChefTask.countDocuments({
-        order: order._id,
-        status: { $nin: ["completed", "cancelled"] },
-      });
-
-      // Mark the order as completed when no active tasks remain
-      if (remainingTasks === 0) {
-        order.orderStatus = "completed";
-      }
-
     // Cancel all remaining units of the order item
     orderItem.cancelledQuantity =
       orderItem.quantity - orderItem.cancelledQuantity;
@@ -354,26 +343,25 @@ const confirmIngredientUnavailable = async (req, res) => {
       await menuItem.save();
     }
 
-      // Calculate refund only for the newly cancelled quantity
-      const refundAmount =
-        orderItem.price * orderItem.cancelledQuantity;
-
-      // Prevent duplicate refund processing
-      if (
-        order.paymentStatus === "paid" &&
-        order.refund.refundAmount >= refundAmount &&
-        orderItem.isCancelled
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Refund for this item has already been recorded.",
-        });
-      }
+    // Calculate refund only for the cancelled quantity
+    const refundAmount =
+      orderItem.price * orderItem.cancelledQuantity;
 
     // Record refund if payment was already made
     if (order.paymentStatus === "paid") {
       order.refund.refundAmount += refundAmount;
       order.refund.refundStatus = "pending";
+    }
+
+    // Check if all Chef Tasks are completed or cancelled
+    const remainingTasks = await ChefTask.countDocuments({
+      order: order._id,
+      status: { $nin: ["completed", "cancelled"] },
+    });
+
+    // Mark the order as completed when no active tasks remain
+    if (remainingTasks === 0) {
+      order.orderStatus = "completed";
     }
 
     await order.save();

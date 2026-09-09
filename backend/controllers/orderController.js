@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const Menu = require("../models/Menu");
+const ChefTask = require("../models/chefTask");
 const { assignOrderItemsToChefs } = require("../services/chefAssignmentService");
 
 // Create Order
@@ -420,6 +421,14 @@ const operatorCancelOrder = async (req, res) => {
       });
     }
 
+    // Refund is allowed only for paid orders
+    if (refundAmount > 0 && order.paymentStatus !== "paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Refund can only be recorded for a paid order.",
+      });
+    }
+
     // Store cancellation details
     order.cancellation.isCancelled = true;
     order.cancellation.cancelledBy = req.user.id;
@@ -492,8 +501,13 @@ const operatorCancelOrderItem = async (req, res) => {
       });
     }
 
-    // Calculate refund for the cancelled item
-    const refundAmount = orderItem.price * orderItem.quantity;
+    // Cancel all remaining units of the order item
+    orderItem.cancelledQuantity =
+      orderItem.quantity - orderItem.cancelledQuantity;
+
+    // Calculate refund for the cancelled quantity
+    const refundAmount =
+      orderItem.price * orderItem.cancelledQuantity;
 
     // Store item cancellation details
     orderItem.isCancelled = true;
@@ -501,12 +515,36 @@ const operatorCancelOrderItem = async (req, res) => {
     orderItem.cancelledBy = req.user.id;
     orderItem.cancelledAt = new Date();
 
+    // Cancel pending Chef Tasks containing the cancelled item
+    await ChefTask.updateMany(
+      {
+        order: order._id,
+        status: "pending",
+        "items.menuItem": orderItem.menuItem,
+      },
+      {
+        $set: {
+          status: "cancelled",
+        },
+      }
+    );
+
     // Record refund only when payment has already been made
     if (order.paymentStatus === "paid") {
       order.refund.refundAmount += refundAmount;
       order.refund.refundStatus = "pending";
     }
 
+    // Check if all Chef Tasks are completed or cancelled
+    const remainingTasks = await ChefTask.countDocuments({
+      order: order._id,
+      status: { $nin: ["completed", "cancelled"] },
+    });
+
+    // Mark the order as completed when no active tasks remain
+    if (remainingTasks === 0) {
+      order.orderStatus = "completed";
+    }
     await order.save();
 
     res.status(200).json({
