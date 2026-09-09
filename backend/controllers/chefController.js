@@ -154,7 +154,7 @@ const updateTaskStatus = async (req, res) => {
       if (status === "completed") {
         const remainingTasks = await ChefTask.countDocuments({
           order: task.order,
-          status: { $ne: "completed" },
+          status: { $nin: ["completed", "cancelled"] },
         });
 
         if (remainingTasks === 0) {

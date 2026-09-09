@@ -298,12 +298,17 @@ const confirmIngredientUnavailable = async (req, res) => {
       });
     }
 
-    // Check if the item is already cancelled
-    if (orderItem.isCancelled) {
-      return res.status(400).json({
-        success: false,
-        message: "Order item is already cancelled.",
-      });
+  // Find the rejected Chef Task for this order item
+    const chefTask = await ChefTask.findOne({
+      order: order._id,
+      status: "rejected",
+      "items.menuItem": orderItem.menuItem,
+    });
+
+    if (chefTask) {
+      // Mark the rejected Chef Task as cancelled
+      chefTask.status = "cancelled";
+      await chefTask.save();
     }
 
     // Cancel the order item
@@ -337,6 +342,7 @@ const confirmIngredientUnavailable = async (req, res) => {
       message: "Ingredient unavailable confirmed and order item cancelled.",
       refundAmount,
       order,
+      chefTask,
     });
   } catch (error) {
     console.error(error);
