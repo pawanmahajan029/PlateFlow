@@ -325,6 +325,20 @@ const confirmIngredientUnavailable = async (req, res) => {
     chefTask.status = "cancelled";
     await chefTask.save();
 
+    // Cancel other pending Chef Tasks containing the unavailable item
+    await ChefTask.updateMany(
+      {
+        order: order._id,
+        status: "pending",
+        "items.menuItem": orderItem.menuItem,
+      },
+      {
+        $set: {
+          status: "cancelled",
+        },
+      }
+    );
+
     // Cancel all remaining units of the order item
     orderItem.cancelledQuantity =
       orderItem.quantity - orderItem.cancelledQuantity;
@@ -411,6 +425,33 @@ const reassignChefTask = async (req, res) => {
       });
     }
 
+    // Find the related order
+    const order = await Order.findById(task.order);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Related order not found.",
+      });
+    }
+
+    // Check whether any menu item in this task has been cancelled
+    const hasCancelledItem = task.items.some((taskItem) => {
+      const orderItem = order.items.find(
+        (item) =>
+          item.menuItem.toString() === taskItem.menuItem.toString()
+      );
+
+      return orderItem && orderItem.isCancelled;
+    });
+
+    if (hasCancelledItem) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot reassign a task for a cancelled order item.",
+      });
+    }
+
     const chef = await User.findOne({
       _id: chefId,
       role: "chef",
@@ -424,8 +465,11 @@ const reassignChefTask = async (req, res) => {
       });
     }
 
+    // Reassign the task to the new Chef
     task.chef = chefId;
     task.status = "pending";
+    task.rejectionReason = "";
+    task.rejectionDetails = "";
     task.assignedBy = req.user.id;
 
     await task.save();

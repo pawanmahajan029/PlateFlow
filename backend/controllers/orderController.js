@@ -438,6 +438,19 @@ const operatorCancelOrder = async (req, res) => {
     // Mark the order as cancelled
     order.orderStatus = "cancelled";
 
+    // Cancel all pending Chef Tasks for the cancelled order
+    await ChefTask.updateMany(
+      {
+        order: order._id,
+        status: "pending",
+      },
+      {
+        $set: {
+          status: "cancelled",
+        },
+      }
+    );
+
     // Record refund details if a refund is applicable
     if (refundAmount > 0 && order.paymentStatus === "paid") {
       order.refund.refundAmount = refundAmount;

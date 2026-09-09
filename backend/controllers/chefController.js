@@ -80,6 +80,34 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
+    // Validate the rejection reason when Chef rejects a task
+    if (
+      status === "rejected" &&
+      ![
+        "ingredient_unavailable",
+        "equipment_problem",
+        "cannot_prepare_item",
+        "other",
+      ].includes(rejectionReason)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rejection reason.",
+      });
+    }
+
+    // Additional details are required when rejection reason is "other"
+    if (
+      status === "rejected" &&
+      rejectionReason === "other" &&
+      !req.body.rejectionDetails
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection details are required when reason is other.",
+      });
+    }
+
     const task = await ChefTask.findOne({
       _id: req.params.id,
       chef: req.user.id,
@@ -132,6 +160,7 @@ const updateTaskStatus = async (req, res) => {
     // Store rejection reason when Chef rejects the task
     if (status === "rejected") {
       task.rejectionReason = rejectionReason;
+      task.rejectionDetails = req.body.rejectionDetails || "";
     }
 
     await task.save();

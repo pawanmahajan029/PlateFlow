@@ -15,6 +15,10 @@ const {
   processRefund,
 } = require("../controllers/orderController");
 
+const {
+  confirmIngredientUnavailable,
+} = require("../controllers/operatorController");
+
 const protect = require("../middleware/authmiddleware");
 const authorize = require("../middleware/rolemiddleware");
 
@@ -47,5 +51,13 @@ router.post("/:id/item/:itemId/cancel",protect,authorize("operator"),operatorCan
 
 // Operator can process a pending refund
 router.put("/:id/refund",protect,authorize("operator"),processRefund);
+
+// Operator confirms ingredient is unavailable
+router.post(
+  "/:id/ingredient-unavailable",
+  protect,
+  authorize("operator"),
+  confirmIngredientUnavailable
+);
 
 module.exports = router;
